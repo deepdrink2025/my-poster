@@ -9,13 +9,18 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-dist
 *.local
 
 # Editor directories and files
 .idea
+.vscode
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# uni-app specific
+unpackage/
+dist/
+.hbuilderx/
