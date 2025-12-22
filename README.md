@@ -61,9 +61,9 @@ const baseURL = 'http://your-backend-api.com'; // <--- 修改这里
 
 - **H5 模式**
 
-  ```bash
+```bash
 npm run dev:h5
-  ```
+```
 
 - **微信小程序模式**
 
