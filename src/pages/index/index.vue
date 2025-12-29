@@ -41,6 +41,11 @@
                   <view class="dot"></view><view class="dot"></view><view class="dot"></view>
                 </view>
                 <view class="loading-text">{{ message.content }}</view>
+                <!-- 新增：模拟进度条 -->
+                <view class="progress-box" v-if="message.progress !== undefined">
+                  <view class="progress-bar" :style="{ width: message.progress + '%' }"></view>
+                </view>
+                <text class="loading-hint">预计耗时 1-2 分钟，请保持屏幕常亮</text>
               </view>
               <!-- 错误提示 -->
               <view v-if="message.type === 'error'" class="error-message">
@@ -92,38 +97,9 @@ const canvasHeight = ref(1); // 默认值，确保 canvas 存在
 // 获取当前组件实例，用于 CanvasContext
 const instance = getCurrentInstance();
 
-/**
- * 从本地存储加载历史记录。
- * 如果发现有未完成的“加载中”状态，则将其转换为错误提示。
- */
-const loadHistory = () => {
-  try {
-    const storedHistory = uni.getStorageSync('chat_history');
-    if (storedHistory) {
-      const parsedHistory = JSON.parse(storedHistory);
-      // 处理被中断的生成任务
-      return parsedHistory.map(message => 
-        (message.role === 'assistant' && message.type === 'loading') 
-          ? { ...message, type: 'error', content: '生成已中断' }
-          : message
-      );
-    }
-  } catch (e) {
-    console.error('加载历史记录失败:', e);
-  }
-  return []; // 默认返回空数组
-};
-const chatHistory = ref(loadHistory()); // 从本地存储初始化对话历史
+const chatHistory = ref([]); // 默认为空数组，不再从本地存储加载
 const promptText = ref(''); // 用于双向绑定 PromptForm 的值
 let loadingInterval = null; // 用于加载文案的定时器
-const creativeLoadingTexts = [
-  '正在混合颜料...',
-  '正在构思画面...',
-  'AI 正在挥洒创意...',
-  '马上就要画好了...',
-  '灵感正在迸发...',
-  '正在捕捉光影...'
-];
 
 const scrollIntoViewId = ref('');
 const scrollTop = ref(0);
@@ -165,6 +141,8 @@ const handleGenerate = async (payload) => {
   }
 
   loading.value = true;
+  // 保持屏幕常亮，防止用户在等待过程中自动锁屏
+  uni.setKeepScreenOn({ keepScreenOn: true });
 
   // 1. 添加用户消息
   const userMessage = {
@@ -181,20 +159,33 @@ const handleGenerate = async (payload) => {
     id: assistantMessageId,
     role: 'assistant',
     type: 'loading',
-    content: creativeLoadingTexts[0], // 初始加载文案
+    content: '正在解析您的奇思妙想...', // 初始加载文案
+    progress: 0, // 初始进度
   };
   chatHistory.value.push(assistantLoadingMessage);
 
-  // 启动动态文案定时器
-  let textIndex = 0;
+  // 启动模拟进度条和动态文案
+  let currentProgress = 0;
   const loadingMessageIndex = chatHistory.value.length - 1;
   if (loadingInterval) clearInterval(loadingInterval); // 清除上一个定时器
+  
   loadingInterval = setInterval(() => {
-    textIndex = (textIndex + 1) % creativeLoadingTexts.length;
+    // 模拟进度增长：前期快，后期慢，逼近 99%
+    // 假设平均耗时 2 分钟左右，调整参数使其增长更平缓
+    const remaining = 99 - currentProgress;
+    const increment = Math.max(0.02, remaining * 0.004); // 降低增速系数，适配较长的生成时间
+    currentProgress = Math.min(99, currentProgress + increment);
+
     if (chatHistory.value[loadingMessageIndex] && chatHistory.value[loadingMessageIndex].type === 'loading') {
-      chatHistory.value[loadingMessageIndex].content = creativeLoadingTexts[textIndex];
+      chatHistory.value[loadingMessageIndex].progress = Math.floor(currentProgress);
+      // 根据进度切换文案，让用户感觉有阶段性进展
+      if (currentProgress < 20) chatHistory.value[loadingMessageIndex].content = '正在解析您的奇思妙想...';
+      else if (currentProgress < 40) chatHistory.value[loadingMessageIndex].content = '正在构思画面构图...';
+      else if (currentProgress < 60) chatHistory.value[loadingMessageIndex].content = '正在混合色彩与光影...';
+      else if (currentProgress < 80) chatHistory.value[loadingMessageIndex].content = 'AI 正在挥洒细节...';
+      else chatHistory.value[loadingMessageIndex].content = '正在进行最后的润色...';
     }
-  }, 3000); // 每2秒切换一次文案
+  }, 200); // 每 200ms 更新一次，动画更丝滑
 
 
   try {
@@ -244,6 +235,7 @@ const handleGenerate = async (payload) => {
     }
   } finally {
     loading.value = false;
+    uni.setKeepScreenOn({ keepScreenOn: false }); // 恢复屏幕自动休眠
     if (loadingInterval) {
       clearInterval(loadingInterval);
       loadingInterval = null;
@@ -309,7 +301,6 @@ const confirmClearHistory = () => {
  */
 const clearHistory = () => {
   chatHistory.value = []; // 清空视图
-  uni.removeStorageSync('chat_history'); // 清空本地存储
 };
 
 /**
@@ -408,23 +399,12 @@ const addWatermark = async (originalUrl) => {
   }
 };
 
-// 监听聊天记录变化，自动滚动到底部
-watch(chatHistory, (newHistory) => {
-  const HISTORY_LIMIT = 100; // 设置历史记录上限为 100 条
-  let historyToSave = [...newHistory];
-
-  if (historyToSave.length > HISTORY_LIMIT) {
-    // 从数组开头移除超出的部分
-    historyToSave.splice(0, historyToSave.length - HISTORY_LIMIT);
-  }
-  // 将新记录保存到本地存储
-  uni.setStorageSync('chat_history', JSON.stringify(historyToSave));
-}, { deep: true });
 
 
 </script>
 
 <style scoped>
+
 .fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -454,8 +434,8 @@ watch(chatHistory, (newHistory) => {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1; 
-  /* 适配顶部安全区域（刘海屏），确保背景填满顶部，内容从安全区域下方开始 */
+  z-index: 1;
+  /* 适配顶部安全区域（刘海屏）：背景填满整个顶部，内容从安全区域下方开始 */
   padding: calc(20px + env(safe-area-inset-top)) 20px 10px;
   text-align: center;
   background-color: #f4f4f5; /* 增加背景色以防内容穿透 */
@@ -490,13 +470,11 @@ watch(chatHistory, (newHistory) => {
 
 .main-content {
   flex: 1;
-  position: relative; /* 创建新的堆叠上下文 */  
+  position: relative; /* 创建新的堆叠上下文 */
   width: 100%;
-  box-sizing: border-box;
-  /* 为 position:fixed 的输入框预留出底部空间 */
-  /* 对应 header 的高度变化进行调整 */
-  padding-top: calc(90px + env(safe-area-inset-top));
-  padding-bottom: 95px; /* 一个预估值，约等于输入框的实际高度 */
+  box-sizing: border-box;  
+  padding-top: calc(70px + env(safe-area-inset-top));
+  padding-bottom: calc(95px + env(safe-area-inset-bottom)); /* 底部安全区域适配 */
 }
 
 .chat-list {
@@ -569,6 +547,26 @@ watch(chatHistory, (newHistory) => {
   gap: 10px;
   color: #666;
   padding: 10px;
+}
+
+.progress-box {
+  width: 100%;
+  height: 6px;
+  background-color: #edf2f7;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #4a90e2;
+  transition: width 0.2s linear;
+}
+
+.loading-hint {
+  font-size: 12px;
+  color: #a0aec0;
 }
 
 .error-message {
