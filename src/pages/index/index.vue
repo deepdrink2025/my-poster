@@ -3,7 +3,7 @@
   <view class="container">
     <view class="header">
       <view class="title-wrapper">
-        <text class="title">秒作图</text>
+        <text class="title">种草海报PPT神器</text>
         <uni-icons class="more-icon" type="more-filled" size="22" color="#888" @click="showMoreOptions"></uni-icons>
       </view>
       <text class="subtitle">输入奇思妙想，即刻生成艺术作品</text>
