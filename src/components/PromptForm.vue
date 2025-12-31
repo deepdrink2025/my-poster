@@ -2,9 +2,11 @@
 <template>
   <view class="prompt-form">
     <textarea
-      v-model="prompt"
+      :value="modelValue"
+      @input="handleInput"
       class="prompt-textarea"
-      placeholder="请输入你的创意或描述（内容、尺寸等）..."
+      placeholder="请输入创意或描述（内容、尺寸等）..."
+      placeholder-style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
       :disabled="loading"
       auto-height
       maxlength="-1"
@@ -21,21 +23,26 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';  
 
 // 定义 props 和 emits
-defineProps({
+const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  modelValue: {
+    type: String,
+    default: ''
   }
 });
-const emit = defineEmits(['submit']);
+const emit = defineEmits(['submit', 'update:modelValue']);
 
-const prompt = ref('');
+const handleInput = (e) => {
+  emit('update:modelValue', e.detail.value);
+};
 
 const handleSubmit = () => {
-  const trimmedPrompt = prompt.value.trim();
+  const trimmedPrompt = props.modelValue.trim();
   if (!trimmedPrompt) {
     // #ifdef MP-WEIXIN
     uni.showToast({
@@ -51,7 +58,6 @@ const handleSubmit = () => {
   emit('submit', { prompt: trimmedPrompt });
 
   // 提交后清空输入框
-  prompt.value = '';
 };
 </script>
 
@@ -65,6 +71,7 @@ const handleSubmit = () => {
 
 .prompt-textarea {
   flex: 1;
+  min-width: 0;
   min-height: 24px; /* 初始高度，约一行 */
   max-height: 96px; /* 最大高度，约四行，超出后可滚动 */
   padding: 10px 15px;
