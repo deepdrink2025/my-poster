@@ -26,6 +26,8 @@ export function useWatermark() {
 
       // 等待 Canvas 尺寸更新
       await nextTick();
+      // 增加延时：UniApp View 层更新可能滞后，仅 nextTick 有时不够，导致 Canvas 尺寸未生效就开始绘制
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const ctx = uni.createCanvasContext(canvasId, instance);
       if (!ctx) {
@@ -59,12 +61,15 @@ export function useWatermark() {
       // 5. 将 Canvas 导出为临时文件
       return await new Promise<string>((resolve, reject) => {
         ctx.draw(false, () => {
-          uni.canvasToTempFilePath({
-            canvasId,
-            x: 0, y: 0, width, height, destWidth: width, destHeight: height,
-            success: (res) => resolve(res.tempFilePath),
-            fail: reject
-          }, instance);
+          // 增加延时：确保绘制指令在 Native 层完全执行完毕后再导出，防止导出空白
+          setTimeout(() => {
+            uni.canvasToTempFilePath({
+              canvasId,
+              x: 0, y: 0, width, height, destWidth: width, destHeight: height,
+              success: (res) => resolve(res.tempFilePath),
+              fail: reject
+            }, instance);
+          }, 100);
         });
       });
     } catch (error) {

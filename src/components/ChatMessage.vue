@@ -36,7 +36,7 @@
       </view>
       <!-- 结果展示 -->
       <view v-if="message.type === 'image'" class="result-area fade-in">
-        <image :src="message.content" class="result-image" mode="widthFix" />
+        <image :src="message.content || message.originalContent" class="result-image" mode="widthFix" />
         <view v-if="message.originalContent" class="action-buttons fade-in">
           <view class="action-button" @click="handleSave">
             <image src="/static/download.svg" class="action-icon" />
