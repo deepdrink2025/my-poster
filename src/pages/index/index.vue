@@ -46,6 +46,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app';
 import PromptForm from '@/components/PromptForm.vue'; // 导入表单组件
 import WelcomeView from '@/components/WelcomeView.vue';  // 导入欢迎组件
 import ChatMessage from '@/components/ChatMessage.vue'; // 导入聊天消息组件
@@ -201,6 +202,25 @@ const downloadForH5 = (url) => {
   if (!url) return;
   platform.h5Download(url);
 };
+
+/**
+ * 小程序分享给好友
+ */
+onShareAppMessage(() => {
+  return {
+    title: '种草海报PPT神器 - 输入奇思妙想，即刻生成艺术作品',
+    path: '/pages/index/index'
+  };
+});
+
+/**
+ * 小程序分享到朋友圈
+ */
+onShareTimeline(() => {
+  return {
+    title: '种草海报PPT神器 - 输入奇思妙想，即刻生成艺术作品'
+  };
+});
 
 </script>
 
